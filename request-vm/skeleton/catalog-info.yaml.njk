@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: ${{ values.serviceName }}
+  description: GCP VM requested via self-service portal
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/williamrobin15/infra-requests
+  tags:
+    - gcp
+    - vm
+    - ${{ values.environment }}
+spec:
+  type: compute-instance
+  owner: ${{ values.requester }}
+  system: infra-requests

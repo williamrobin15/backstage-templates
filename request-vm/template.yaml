@@ -1,0 +1,85 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: request-gcp-vm
+  title: Request a GCP VM
+  description: >
+    Self-service request for a GCP Compute Engine VM. Opens a Pull Request
+    in the infra-requests repo instead of provisioning directly — the PR
+    is where approval, cost, and security guardrails are enforced.
+  tags:
+    - gcp
+    - infrastructure
+    - terraform
+spec:
+  owner: platform-team
+  type: infrastructure
+
+  parameters:
+    - title: VM Details
+      required:
+        - environment
+        - region
+      properties:
+        environment:
+          title: Environment
+          type: string
+          enum: [dev, staging, prod]
+          description: prod requires CODEOWNERS approval (see infra-requests repo)
+        region:
+          title: GCP Region
+          type: string
+          default: asia-south1
+        machine_type:
+          title: Machine Type
+          type: string
+          default: e2-medium
+          enum: [e2-small, e2-medium, e2-standard-4]
+        ttl_hours:
+          title: Time-to-live (hours)
+          type: number
+          default: 24
+          description: Resource auto-destroys after this many hours. Set 0 for "never expires" (prod).
+        service_name:
+          title: Service / VM name
+          type: string
+          description: Used as the VM name and request identifier — keep it short, lowercase, no spaces
+
+  steps:
+    - id: fetch
+      name: Render Terraform + catalog files from skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          environment: ${{ parameters.environment }}
+          region: ${{ parameters.region }}
+          machineType: ${{ parameters.machine_type }}
+          ttlHours: ${{ parameters.ttl_hours }}
+          serviceName: ${{ parameters.service_name }}
+          requester: ${{ user.entity.metadata.name }}
+
+    - id: publish
+      name: Open Pull Request in infra-requests
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?owner=williamrobin15&repo=infra-requests
+        branchName: request-${{ parameters.environment }}-${{ parameters.service_name }}
+        title: "Infra request: ${{ parameters.service_name }} (${{ parameters.environment }})"
+        description: |
+          Requested by: ${{ user.entity.metadata.name }}
+          Environment: ${{ parameters.environment }}
+          Region: ${{ parameters.region }}
+          Machine type: ${{ parameters.machine_type }}
+          TTL hours: ${{ parameters.ttl_hours }}
+
+          This PR was opened automatically by Backstage. CI will post a
+          Terraform plan, a security scan (tfsec), and a cost estimate
+          (Infracost) as comments below. An approver other than the
+          requester must approve before this can be merged.
+        targetPath: requests/${{ parameters.service_name }}
+
+  output:
+    links:
+      - title: View Pull Request
+        url: ${{ steps.publish.output.remoteUrl }}
