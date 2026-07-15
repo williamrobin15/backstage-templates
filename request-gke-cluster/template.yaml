@@ -1,0 +1,102 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: request-gke-cluster
+  title: Request a GKE Kubernetes Cluster
+  description: Request a Google Kubernetes Engine (GKE) Cluster with branch approvals and security guardrails.
+  tags:
+    - gcp
+    - kubernetes
+    - terraform
+spec:
+  owner: group:development
+  type: service
+
+  parameters:
+    - title: GKE Cluster Configuration
+      required:
+        - service_name
+        - environment
+        - region
+      properties:
+        service_name:
+          title: Cluster Name
+          type: string
+          description: Name of the GKE Cluster (e.g., my-app-cluster).
+          ui:autofocus: true
+        environment:
+          title: Environment
+          type: string
+          description: Target environment.
+          enum:
+            - dev
+            - staging
+            - prod
+          default: dev
+        region:
+          title: GCP Region
+          type: string
+          description: Region to deploy the cluster.
+          enum:
+            - us-central1
+            - europe-west1
+            - asia-south1
+          default: us-central1
+        machine_type:
+          title: Node Machine Type
+          type: string
+          description: GKE Worker Node machine type.
+          enum:
+            - e2-medium
+            - e2-standard-2
+            - e2-standard-4
+          default: e2-medium
+        node_count:
+          title: Initial Node Count
+          type: integer
+          description: Initial number of nodes per zone in the node pool.
+          default: 1
+          minimum: 1
+          maximum: 5
+        ttl_hours:
+          title: Time to Live (TTL) in Hours
+          type: integer
+          description: Auto-deletion timeframe for the resources.
+          default: 48
+          enum:
+            - 24
+            - 48
+            - 168
+
+  steps:
+    - id: fetch
+      name: Render GKE Terraform files from skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          environment: ${{ parameters.environment }}
+          region: ${{ parameters.region }}
+          machineType: ${{ parameters.machine_type }}
+          nodeCount: ${{ parameters.node_count }}
+          ttlHours: ${{ parameters.ttl_hours }}
+          serviceName: ${{ parameters.service_name }}
+          requester: ${{ user.entity.metadata.name }}
+
+    - id: publish
+      name: Publish to Infrastructure Requests Repository
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?repo=infra-requests&owner=williamrobin15
+        branchName: request-gke-${{ parameters.service_name }}
+        title: "Infra request: GKE Cluster ${{ parameters.service_name }} (${{ parameters.environment }})"
+        description: |
+          New GKE Kubernetes Cluster request submitted via Backstage.
+          - **Cluster Name:** ${{ parameters.service_name }}
+          - **Environment:** ${{ parameters.environment }}
+          - **Region:** ${{ parameters.region }}
+          - **Machine Type:** ${{ parameters.machine_type }}
+          - **Nodes:** ${{ parameters.node_count }} nodes/zone
+          - **Requested By:** ${{ user.entity.metadata.name }}
+          - **TTL:** ${{ parameters.ttl_hours }} hours
+        targetPath: requests/gke-${{ parameters.service_name }}

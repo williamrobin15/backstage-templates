@@ -1,0 +1,7 @@
+{
+  "service_name": "gke-${{ values.serviceName }}",
+  "environment": "${{ values.environment }}",
+  "requester": "${{ values.requester }}",
+  "ttl_hours": ${{ values.ttlHours }},
+  "created_at": "GENERATED_AT_MERGE_TIME"
+}

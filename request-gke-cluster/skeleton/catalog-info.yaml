@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: gke-${{ values.serviceName }}
+  description: "GKE Cluster requested for environment: ${{ values.environment }}"
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/williamrobin15/infra-requests/tree/main/requests/gke-${{ values.serviceName }}
+    backstage.io/project-id: "project-eefd8d29-a5e4-42f7-964"
+  labels:
+    environment: "${{ values.environment }}"
+    requester: "${{ values.requester }}"
+spec:
+  type: kubernetes-cluster
+  owner: user:${{ values.requester }}
+  lifecycle: experimental
